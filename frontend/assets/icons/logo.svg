@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 48" width="280" height="48" fill="none">
+  <defs>
+    <linearGradient id="pinGradFull" x1="4" y1="4" x2="38" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2E6DA4"/>
+      <stop offset="100%" stop-color="#1F3A5F"/>
+    </linearGradient>
+    <linearGradient id="checkGradFull" x1="14" y1="18" x2="28" y2="28" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#0F9D8A"/>
+    </linearGradient>
+  </defs>
+  <!-- Mark -->
+  <g transform="translate(2, 2) scale(0.9)">
+    <path d="M24 4C14.06 4 6 12.06 6 22c0 10.75 13.9 20.9 16.7 22.8.8.55 1.8.55 2.6 0C28.1 42.9 42 32.75 42 22 42 12.06 33.94 4 24 4Z" fill="url(#pinGradFull)"/>
+    <circle cx="24" cy="20" r="11" fill="#FFFFFF"/>
+    <path d="M18 20.5l4 4 8-8" stroke="url(#checkGradFull)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="34" cy="10" r="3" fill="#F2A33A"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="54" y="24" font-family="'Figtree', system-ui, sans-serif" font-size="17" font-weight="800" fill="currentColor" letter-spacing="-0.02em">Smart Complaint</text>
+  <text x="54" y="38" font-family="'Figtree', system-ui, sans-serif" font-size="12" font-weight="700" fill="#0F9D8A" letter-spacing="0.08em" text-transform="uppercase">Assistant · Civic Tech</text>
+</svg>

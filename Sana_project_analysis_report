@@ -1,0 +1,453 @@
+# 📋 Smart Complaint Classification & Similarity Detection — Complete Analysis Report
+
+---
+
+## 1. About the Project
+
+**Smart Complaint Classification and Similarity Detection** is a full-stack web application for civic complaint management. Citizens can submit complaints about local civic problems (potholes, garbage, water supply, etc.), and the system:
+
+1. **Automatically classifies** the complaint into one of 8 predefined categories using ML
+2. **Detects duplicate/similar complaints** using vector search (FAISS)
+3. **Recommends past resolutions** from similar resolved complaints
+4. **Provides a map interface** where users can pin issues geographically
+5. **Allows community verification** — neighbours can confirm if a reported issue is fixed or still present
+
+The project has **two distinct UIs**: an older text-based **dashboard** (complaint form + list) and a newer **map-based civic UI** (the primary interface) with Leaflet.js maps, geographic pins, and neighbour verification workflows.
+
+---
+
+## 2. Tech Stack
+
+### Backend
+| Layer | Technology |
+|---|---|
+| API Framework | **FastAPI** (Python) |
+| ASGI Server | **Uvicorn** |
+| ML Embeddings | **SentenceTransformers** (`all-MiniLM-L6-v2`) |
+| Vector Index | **FAISS** (Facebook AI Similarity Search) — `IndexFlatIP` for cosine similarity |
+| Classifier | **Scikit-learn** — Logistic Regression over sentence embeddings |
+| Data Storage | **SQLite** (via Python `sqlite3`) |
+| Auth | Custom token sessions (PBKDF2-SHA256 password hashing, `secrets` module) |
+| Data Serialization | **Pydantic v2** models |
+| Data Processing | **Pandas**, **NumPy** |
+| Model Persistence | **Joblib** (classifier) + FAISS binary file (index) |
+
+### Frontend
+| Layer | Technology |
+|---|---|
+| Map | **Leaflet.js** (OpenStreetMap tiles) |
+| Language | Vanilla **HTML5 + CSS3 + JavaScript** (ES2022+) |
+| Fonts | Google Fonts — **Figtree** |
+| No framework | Pure DOM manipulation |
+
+### Data
+| Item | Location |
+|---|---|
+| Synthetic Dataset | `backend/data/complaints.csv` (~640 rows, 8 categories) |
+| Trained Classifier | `backend/models/classifier.joblib` |
+| FAISS Seed Index | `backend/models/complaints.faiss` |
+| Embeddings Cache | `backend/models/embeddings.npy` |
+| SQLite Database | `backend/data/app.db` (auto-created at first run) |
+
+---
+
+## 3. System Architecture
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                          FRONTEND (Static Files)                     │
+│                                                                      │
+│  civic.html + civic.js + civic.css    (Map UI — primary interface)   │
+│  index.html + login.js                (Login page)                   │
+│  dashboard.html + dashboard.js        (Old dashboard UI)             │
+│  api.js                               (Shared API helper for old UI) │
+└─────────────────────────────┬────────────────────────────────────────┘
+                              │ HTTP (REST/JSON)
+                              │ Bearer token auth
+                              ▼
+┌──────────────────────────────────────────────────────────────────────┐
+│                        FastAPI Backend (port 8000)                   │
+│                                                                      │
+│  main.py   → Auth routes, complaint CRUD, notification routes        │
+│  reports.py → Map reports, checks, status transitions, /api/me       │
+│  engine.py  → ComplaintEngine class (classify, similar, recommend)   │
+│  auth.py    → Password hashing, session tokens, current_user dep.    │
+│  db.py      → SQLite schema init, connect() context manager          │
+│  config.py  → File paths, constants (EMBED_MODEL, DUPLICATE_THRESHOLD)│
+└───────┬─────────────────────────────┬────────────────────────────────┘
+        │                             │
+        ▼                             ▼
+┌───────────────────┐    ┌────────────────────────────────────────────┐
+│   SQLite (app.db) │    │         ML Pipeline                        │
+│                   │    │                                            │
+│  users            │    │  SentenceTransformer ("all-MiniLM-L6-v2") │
+│  sessions         │    │  → 384-dim normalized float32 vectors      │
+│  complaints       │    │                                            │
+│  notifications    │    │  Seed FAISS Index (IndexFlatIP)            │
+│  reports          │    │  → complaints.csv embeddings (640 rows)    │
+│  checks           │    │                                            │
+└───────────────────┘    │  Live FAISS Index (IndexIDMap+IndexFlatIP) │
+                         │  → user-submitted reports (rebuilt on boot) │
+                         │                                            │
+                         │  Logistic Regression Classifier            │
+                         │  → predict_proba over 8 categories         │
+                         └────────────────────────────────────────────┘
+```
+
+### Two FAISS Indexes — Very Important Distinction
+| Index | File | Searched By | What It Contains |
+|---|---|---|---|
+| **Seed index** | `complaints.faiss` | `engine.similar()` | 640 synthetic complaints from CSV |
+| **Live index** | In-memory `LiveIndex` | `find_nearby_similar()` | User-submitted map reports (rebuilt from DB on boot) |
+
+---
+
+## 4. Database (SQLite — `app.db`)
+
+### Schema Overview
+
+```sql
+users          (id, name, email, password_hash, created_at)
+sessions       (token PK, user_id FK, created_at)
+complaints     (id, user_id FK, text, ward, category, confidence,
+                department, status DEFAULT 'Submitted', created_at)
+notifications  (id, user_id FK, complaint_id, title, message,
+                is_read DEFAULT 0, created_at)
+reports        (id, user_id FK, title, text, category, confidence,
+                department, city, area, lat, lng,
+                status DEFAULT 'open', embedding BLOB,
+                created_at, updated_at)
+checks         (id, report_id FK, user_id FK, kind, note,
+                created_at, UNIQUE(report_id, user_id))
+```
+
+### Key Design Decisions
+- **`reports.embedding BLOB`** — The sentence vector is stored as raw `float32` bytes directly in SQLite. This lets the live FAISS index be **rebuilt from the database** every time the server restarts — no separate file needed.
+- **`checks` UNIQUE constraint** — Prevents double-checking: `ON CONFLICT DO UPDATE` replaces the previous check.
+- Status indexes (`idx_reports_status`, `idx_checks_report`) exist for query performance.
+- **Foreign keys are enabled** via `PRAGMA foreign_keys = ON` on every connection (important — SQLite doesn't enable this by default).
+
+---
+
+## 5. Data Retrieval / ML Techniques
+
+### 5.1 Text Embedding
+- Model: `all-MiniLM-L6-v2` (SentenceTransformers)
+- Produces **384-dimensional float32 vectors**, L2-normalized
+- Normalized vectors allow **inner product = cosine similarity**
+
+### 5.2 Classification
+- **Logistic Regression** trained on sentence embeddings
+- `predict_proba` gives soft probabilities → top-3 returned to frontend
+- Trained on 640 synthetic samples across 8 categories
+- Uses `sklearn.LogisticRegression(max_iter=1000)`
+
+### 5.3 Similarity Search (FAISS)
+- **Seed index**: `IndexFlatIP` — brute-force inner product (cosine) over all 640 CSV rows
+- **Live index**: `IndexIDMap(IndexFlatIP)` — allows searching by report ID, thread-safe via `threading.Lock`
+- The engine always searches top-200 results then filters by category/status → returns top-K
+- `DUPLICATE_THRESHOLD = 0.85` — similarity ≥ 0.85 → flagged as possible duplicate
+
+### 5.4 Recommendation Flow
+```
+User submits complaint text
+    ↓
+embed(text) → 384-dim vector
+    ↓
+classify(vector) → predicted category + probabilities
+    ↓
+similar(text, category=predicted, resolved_only=True)
+    → FAISS search top-200
+    → filter: category matches + status == "Resolved"
+    → return top-K with similarity score, resolution text, resolution_days
+    ↓
+Return: category, confidence, top_categories, similar resolved complaints
+```
+
+### 5.5 Geographic Duplicate Detection (`find_nearby_similar`)
+```
+User's new report text + lat/lng
+    ↓
+embed(text) → vector
+    ↓
+LiveIndex.search(vector, k=25) → candidate report IDs
+    ↓
+filter: similarity >= 0.75 (SAME_ISSUE_SIM)
+    ↓
+SQL: fetch non-closed reports from those IDs
+    ↓
+haversine_m(user_lat, user_lng, report_lat, report_lng)
+    ↓
+filter: distance <= 250m (DUP_RADIUS_M)
+    ↓
+Return: nearby duplicate candidates sorted by similarity
+```
+
+---
+
+## 6. How to Run It
+
+### Prerequisites
+- Python 3.9+
+- pip
+
+### Step-by-Step Setup
+
+```bash
+# 1. Navigate to the backend folder
+cd "c:\Users\dilan\Downloads\complaint-classifier (2)\Sana_complaint-classifier\backend"
+
+# 2. Create and activate a virtual environment
+python -m venv .venv
+.venv\Scripts\activate     # Windows PowerShell
+
+# 3. Install dependencies
+pip install -r requirements.txt
+# Note: sentence-transformers will download the model (~90MB) on first run
+
+# 4. Generate the synthetic dataset (creates backend/data/complaints.csv)
+python -m ml.generate_data
+
+# 5. Train the classifier (creates backend/models/classifier.joblib)
+python -m ml.train_classifier
+
+# 6. Build the FAISS seed index (creates backend/models/complaints.faiss + embeddings.npy)
+python -m ml.build_index
+
+# 7. (Optional) Seed demo map reports in Bengaluru to see the map populated
+python seed_demo.py
+
+# 8. Start the server
+uvicorn app.main:app --reload
+```
+
+### Access Points
+| URL | What it is |
+|---|---|
+| `http://127.0.0.1:8000` | Main map UI (civic.html) |
+| `http://127.0.0.1:8000/index.html` | Login page (old flow) |
+| `http://127.0.0.1:8000/dashboard.html` | Old dashboard UI |
+| `http://127.0.0.1:8000/docs` | Swagger interactive API docs |
+| `http://127.0.0.1:8000/redoc` | ReDoc API docs |
+
+### Demo Accounts (after running seed_demo.py)
+| Email | Password |
+|---|---|
+| `demo.reporter@example.com` | `demo-pass-123` |
+| `demo.neighbour@example.com` | `demo-pass-123` |
+
+---
+
+## 7. How to Test It
+
+### 7.1 API Testing (Swagger UI — easiest)
+1. Open `http://127.0.0.1:8000/docs`
+2. Use the **Authorize** button — but note: the API uses `Authorization: Bearer <token>` header, not the standard OAuth2 form. You'll need to manually add the header.
+
+### 7.2 Manual cURL Testing
+```bash
+# Health check
+curl http://127.0.0.1:8000/api/health
+
+# Register a user
+curl -X POST http://127.0.0.1:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Test User","email":"test@example.com","password":"test123"}'
+
+# Login (save the token from the response)
+curl -X POST http://127.0.0.1:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"test@example.com","password":"test123"}'
+
+# Classify a complaint (no auth needed)
+curl -X POST http://127.0.0.1:8000/api/classify \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Big pothole near the school causing accidents","k":5}'
+
+# Full analysis (no auth needed)
+curl -X POST http://127.0.0.1:8000/api/analyze \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Garbage not collected for a week, smells terrible","k":5}'
+
+# Submit a complaint (auth required — replace TOKEN)
+curl -X POST http://127.0.0.1:8000/api/complaints \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer TOKEN" \
+  -d '{"text":"Street light broken near Koramangala park","ward":"Koramangala"}'
+```
+
+### 7.3 Test the Map UI
+1. Open `http://127.0.0.1:8000`
+2. Register or use the demo account
+3. Click **+ Report issue** → fill the form → **Check with AI** → **Add report**
+4. Observe the pin on the map and verify the AI classification
+5. Click an existing pin → add a "Still there" or "Looks fixed" check
+
+---
+
+## 8. 🚨 Logical Errors and Problems (Priority Order)
+
+---
+
+### BUG #1 — `seed_demo.py` Has Wrong Module Path (CRITICAL — App Won't Run From README)
+
+**File:** `seed_demo.py` (at `backend/seed_demo.py`)
+**Problem:** The file's own docstring says to run it as:
+```bash
+python -m ml.seed_demo
+```
+But the file is located at `backend/seed_demo.py` — **not** inside the `ml/` package. The correct command is:
+```bash
+python seed_demo.py
+```
+Running the documented command will throw `ModuleNotFoundError`.
+
+---
+
+### BUG #2 — `README.md` Folder Structure is Outdated / Wrong (HIGH)
+
+**File:** `README.md`
+**Problem:** The README documents a `script.js` and `organize.py` in the frontend root. **Neither file exists.** The actual frontend has grown significantly — `civic.html`, `civic.js`, `civic.css`, `dashboard.html`, `dashboard.js`, `api.js`, `login.js`. The README's "Run" instructions also don't mention the seed script or the two-UI architecture.
+
+---
+
+### BUG #3 — Missing `faiss` Index File on First Run Crashes Server (HIGH)
+
+**File:** `backend/app/engine.py`, lines 23–25
+**Problem:** `ComplaintEngine.__init__()` checks for `DATA_PATH`, `CLASSIFIER_PATH`, and `INDEX_PATH`. If any are missing, it raises `RuntimeError` — **but this exception is raised inside the `lifespan` function** during server startup. FastAPI will crash at boot with an unhandled error, with no graceful fallback.
+
+**Impact:** If a new developer forgets to run the ML setup steps, the server crashes with a raw traceback instead of a helpful startup error. There's no health-check fallback that would return a `503` if the engine failed.
+
+---
+
+### BUG #4 — `engine.recommend()` Only Returns Resolved + Matching Category — Can Return 0 Results (MEDIUM)
+
+**File:** `backend/app/engine.py`, line 89
+```python
+matches = self.similar(text, k=k, category=category, resolved_only=True)
+```
+**Problem:** The `similar()` method filters by BOTH the predicted category AND `status == "Resolved"`. In the synthetic dataset, only ~70% of complaints are resolved. Combined with category filtering and the FAISS top-200 scan, for rare categories or edge case inputs, `matches` can return an **empty list `[]`**. The frontend handles this gracefully in the UI, but the notification message in `main.py` will then just say the complaint was classified — with no resolution time estimate — which may confuse users.
+
+---
+
+### BUG #5 — `department_for()` Uses Only First Match — Not Most Frequent (MEDIUM)
+
+**File:** `backend/app/engine.py`, lines 75–77
+```python
+def department_for(self, category):
+    rows = self.df[self.df["category"] == category]
+    return str(rows["department"].iloc[0]) if len(rows) else "Municipal Office"
+```
+**Problem:** Since the CSV is shuffled (`.sample(frac=1)`), `iloc[0]` returns the **department of a random row** for that category. In the synthetic data this doesn't matter (all rows in a category have the same department), but if a **real dataset** is plugged in with multiple departments per category, this will randomly assign the wrong department.
+
+**Fix:** Use `rows["department"].mode()[0]` (most frequent department for that category).
+
+---
+
+### BUG #6 — Live FAISS Index `load_live_index()` Skips Vectors of Wrong Dimension Silently (MEDIUM)
+
+**File:** `backend/app/reports.py`, lines 66–75
+```python
+if vec.shape[0] == eng.index.d:
+    live.add(row["id"], vec)
+```
+**Problem:** If a report was somehow stored with an embedding from a different model (e.g., if the model was changed and the DB was not cleared), mismatched vectors are **silently skipped** without any log or warning. The live index ends up with fewer vectors than reports, and those reports can never be found by similarity search.
+
+---
+
+### BUG #7 — Session Has No Expiry Cleanup — Sessions Table Grows Forever (MEDIUM)
+
+**File:** `backend/app/auth.py`, `backend/app/db.py`
+**Problem:** Sessions older than 7 days are **excluded from queries** (the `current_user` check uses `datetime('now', '-7 days')`), but the expired rows are **never deleted** from the `sessions` table. Over time this table will grow unboundedly.
+
+**Fix:** Add a periodic cleanup or delete on login:
+```sql
+DELETE FROM sessions WHERE created_at < datetime('now', '-7 days');
+```
+
+---
+
+### BUG #8 — `train_classifier.py` Runs at Module Level — Runs On Import (MEDIUM)
+
+**File:** `backend/ml/train_classifier.py`
+**Problem:** All the training code (reading CSV, encoding, fitting) runs at the **module level**, not inside `if __name__ == "__main__":`. This means if anyone ever does `import ml.train_classifier` from another script (e.g., to access a helper), the full training pipeline will execute unexpectedly.
+
+```python
+# Lines 13-43 are all at module level — no guard
+df = pd.read_csv(DATA_PATH)   # ← executes on import!
+```
+
+---
+
+### BUG #9 — `apply_verification()` References Reporter ID Incorrectly (MEDIUM)
+
+**File:** `backend/app/reports.py`, line 326
+```python
+status = apply_verification(conn, report_id, rep["user_id"], rep["status"], rep["updated_at"])
+```
+`apply_verification` is defined to exclude checks from the **reporter** (the person who originally filed the report). But `rep["user_id"]` is the **original report's author**, not the person adding the check. This is actually correct intent-wise, but the function's parameter naming is misleading (called `reporter_id` but passed the report owner's user ID). If someone refactors this, the logic could easily break.
+
+---
+
+### BUG #10 — No CSRF Protection on State-Changing Endpoints (LOW-MEDIUM)
+
+**File:** `backend/app/main.py` / `backend/app/reports.py`
+**Problem:** The app uses `Authorization: Bearer <token>` from localStorage — this is not automatically sent by browsers on cross-origin requests (unlike cookies), so CSRF isn't technically exploitable here. However, the CORS config is `allow_origins=["*"]` which means **any website** can call the API if the user happens to have a token. The comment in `main.py` even says:
+```python
+# Before deploying, replace "*" with your real frontend address.
+```
+This is a security issue if ever deployed — it should be fixed before any real-world use.
+
+---
+
+### BUG #11 — `civic.js` and `api.js` Duplicate Auth Logic (LOW)
+
+**Files:** `frontend/civic.js` (lines 63–101), `frontend/api.js` (lines 5–47)
+**Problem:** Both files implement their own `Session`/`Auth` object and `call()`/`api()` function, with slightly different behavior. For example:
+- `civic.js` has a `NeedLogin` error class and `requireAuth()` wrapper
+- `api.js` does a hard redirect on 401
+
+If the token format or auth flow changes, it must be updated in **two places**. This is code duplication that will lead to divergence bugs.
+
+---
+
+### BUG #12 — `fmtDate()` Assumes SQLite Stores UTC But No Timezone Is Set (LOW)
+
+**File:** `frontend/api.js`, line 56–58
+```javascript
+function fmtDate(sqliteUtc) {
+  return new Date(sqliteUtc.replace(" ", "T") + "Z").toLocaleString();
+}
+```
+**Problem:** SQLite's `CURRENT_TIMESTAMP` returns UTC by default, and the code appends `"Z"` to mark it as UTC — which is correct. However, SQLite does not enforce this — if a date was inserted with a local timestamp (e.g., via a direct DB insert), the `"Z"` suffix would cause it to be interpreted incorrectly, showing wrong times to the user.
+
+---
+
+### BUG #13 — No `__init__.py` In `ml/` Package — Import May Fail (LOW)
+
+**File:** `backend/ml/` directory
+**Problem:** The `ml/` folder doesn't appear to have an `__init__.py`. Python 3 supports implicit namespace packages, so `python -m ml.generate_data` will usually work. But if used in certain deployment scenarios or IDEs, missing `__init__.py` files can cause `ModuleNotFoundError`.
+
+---
+
+## 9. Summary Table
+
+| # | Severity | Location | Issue |
+|---|---|---|---|
+| 1 | 🔴 Critical | `seed_demo.py` | Wrong run command in docstring |
+| 2 | 🟠 High | `README.md` | Outdated file structure + missing instructions |
+| 3 | 🟠 High | `engine.py` startup | Server crashes if ML files missing — no graceful fallback |
+| 4 | 🟡 Medium | `engine.py:recommend()` | Can return 0 similar results for rare categories |
+| 5 | 🟡 Medium | `engine.py:department_for()` | Uses `iloc[0]` instead of mode — wrong with real data |
+| 6 | 🟡 Medium | `reports.py:load_live_index()` | Silently skips wrong-dimension embeddings |
+| 7 | 🟡 Medium | `auth.py` / `db.py` | Expired sessions accumulate forever in DB |
+| 8 | 🟡 Medium | `ml/train_classifier.py` | Training runs at module import level |
+| 9 | 🟡 Medium | `reports.py:apply_verification()` | Misleading parameter name risks refactoring bugs |
+| 10 | 🟡 Medium | `main.py` CORS | `allow_origins=["*"]` — not safe for production |
+| 11 | 🟢 Low | `civic.js` + `api.js` | Duplicated auth/fetch logic across two files |
+| 12 | 🟢 Low | `api.js:fmtDate()` | Assumes UTC; breaks if non-UTC timestamps exist |
+| 13 | 🟢 Low | `backend/ml/` | No `__init__.py` in the ml package |
+
+---
+
+*Report generated by analysis of all source files: `main.py`, `engine.py`, `auth.py`, `db.py`, `reports.py`, `config.py`, `ml/generate_data.py`, `ml/train_classifier.py`, `ml/build_index.py`, `seed_demo.py`, `civic.html`, `civic.js`, `civic.css`, `dashboard.html`, `dashboard.js`, `api.js`, `index.html`, `login.js`, `requirements.txt`, `README.md`.*

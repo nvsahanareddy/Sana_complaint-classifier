@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Diagnose | Smart Complaint Assistant</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f3f6f8; color: #243342; margin: 0; padding: 24px; }
+    .box { max-width: 820px; margin: 0 auto; background: #fff; border-radius: 10px; padding: 24px; box-shadow: 0 2px 10px #172b3b12; }
+    h1 { margin-top: 0; } .row { padding: 8px 0; border-bottom: 1px solid #e6ebef; font-size: 14px; }
+    .ok { color: #1f7a45; font-weight: bold; } .bad { color: #bd3030; font-weight: bold; } .warn { color: #b26a00; font-weight: bold; }
+    button, a.btn { display: inline-block; background: #176b87; color: #fff; border: 0; border-radius: 6px; padding: 10px 14px; font-weight: bold;
+      cursor: pointer; text-decoration: none; margin: 6px 6px 0 0; font-size: 14px; }
+    textarea { width: 100%; height: 150px; margin-top: 12px; font-family: monospace; font-size: 12px; }
+    .hint { color: #5b6b78; font-size: 13px; margin: 4px 0 0; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h1>Diagnose</h1>
+    <p class="hint">This page checks the backend and your saved login. It does not need you to be logged in.</p>
+    <div id="rows"></div>
+    <p>
+      <button id="clearBtn">Clear saved login</button>
+      <a class="btn" href="index.html?logout=1">Login page</a>
+      <a class="btn" href="admin.html">Admin dashboard</a>
+      <a class="btn" href="dashboard.html">User dashboard</a>
+      <a class="btn" href="civic.html">Map</a>
+      <button id="againBtn">Check again</button>
+    </p>
+    <p class="hint">If something is wrong, press the button below and send me the text.</p>
+    <button id="copyBtn">Copy report</button>
+    <textarea id="report" readonly></textarea>
+  </div>
+
+  <script>
+    var API_BASE = location.port === "8000" ? "" : "http://127.0.0.1:8000";
+    var lines = [];
+    function row(level, text, hint) {
+      var d = document.createElement("div"); d.className = "row";
+      var b = document.createElement("span"); b.className = level; b.textContent = (level === "ok" ? "OK   " : level === "bad" ? "FAIL " : "NOTE ");
+      d.appendChild(b); d.appendChild(document.createTextNode(text));
+      if (hint) { var p = document.createElement("p"); p.className = "hint"; p.textContent = hint; d.appendChild(p); }
+      document.getElementById("rows").appendChild(d);
+      lines.push((level === "ok" ? "OK   " : level === "bad" ? "FAIL " : "NOTE ") + text + (hint ? "  -> " + hint : ""));
+    }
+    async function timed(path, token, ms) {
+      var ctrl = new AbortController(); var t = setTimeout(function () { ctrl.abort(); }, ms); var start = Date.now();
+      try {
+        var res = await fetch(API_BASE + path, { headers: token ? { Authorization: "Bearer " + token } : {}, signal: ctrl.signal });
+        var data = await res.json().catch(function () { return {}; });
+        return { status: res.status, data: data, ms: Date.now() - start };
+      } catch (e) { return { error: e && e.name === "AbortError" ? "no answer after " + (ms / 1000) + " s" : "cannot connect", ms: Date.now() - start };
+      } finally { clearTimeout(t); }
+    }
+    async function run() {
+      document.getElementById("rows").textContent = ""; lines = [];
+      row("ok", "Page address: " + location.href);
+      row("ok", "Backend address used: " + (API_BASE || location.origin));
+      var token = sessionStorage.getItem("token"), user = null;
+      try { user = JSON.parse(sessionStorage.getItem("user") || "null"); } catch (e) {}
+      row(token ? "ok" : "warn", token ? "A login is saved in this tab (" + (user ? user.name + ", role " + user.role : "unknown user") + ")" : "No login is saved in this tab");
+
+      var h = await timed("/api/health", null, 8000);
+      if (h.error) {
+        row("bad", "Backend is not answering (" + h.error + ")",
+          "Start start_backend.bat and wait for 'Application startup complete'. If the black window shows red error text, send me its last lines. Make sure only ONE backend window is open.");
+      } else {
+        var d = h.data;
+        row(h.ms > 1500 ? "warn" : "ok", "Backend answered in " + h.ms + " ms (status " + h.status + ", health = " + d.status + ")");
+        if (d.database) row(d.database.ok ? "ok" : "bad", d.database.ok ? "Database OK: " + d.database.users + " users, " + d.database.workers + " workers, " + d.database.complaints + " complaints, " + d.database.reports + " reports" : "Database problem: " + d.database.error);
+        row(d.engine === "ready" ? "ok" : "warn", "Machine learning engine: " + d.engine + (d.engine_error ? " (" + d.engine_error + ")" : ""),
+          d.engine === "ready" ? "" : "Login and the admin pages still work; submitting complaints needs the engine.");
+        if (d.startup_error) row("bad", d.startup_error);
+        if (token) {
+          var m = await timed("/api/me", token, 8000);
+          if (m.error) row("bad", "Checking the saved login failed (" + m.error + ")");
+          else if (m.status === 200) row("ok", "Saved login is valid (answered in " + m.ms + " ms)");
+          else row("warn", "Saved login is not accepted by the server (status " + m.status + ")", "Press 'Clear saved login', then log in again.");
+        }
+      }
+      document.getElementById("report").value = lines.join("\n");
+    }
+    document.getElementById("clearBtn").onclick = function () { sessionStorage.clear(); localStorage.removeItem("token"); localStorage.removeItem("user"); run(); };
+    document.getElementById("againBtn").onclick = run;
+    document.getElementById("copyBtn").onclick = function () { var t = document.getElementById("report"); t.select(); try { document.execCommand("copy"); } catch (e) {} };
+    run();
+  </script>
+</body>
+</html>

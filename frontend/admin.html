@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Smart Complaint Assistant</title>
+  <link rel="stylesheet" href="admin.css?v=3">
+</head>
+<body>
+
+  <header class="topbar">
+    <div>
+      <h2>Smart Complaint Assistant</h2>
+      <p>Administration Panel</p>
+    </div>
+    <div class="top-actions">
+      <a href="civic.html">Open Map</a>
+      <span id="adminName">Admin</span>
+      <button id="logout" class="logout-btn">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <section class="welcome">
+      <div>
+        <h1>Admin Dashboard</h1>
+        <p>Manage complaints, map reports and users. Only admins can change statuses.</p>
+      </div>
+      <button id="refreshBtn">Refresh Data</button>
+    </section>
+
+    <p id="status" class="status"></p>
+
+    <!-- Dashboard statistics -->
+    <section class="stats">
+      <div class="stat-card">
+        <h3>Total Complaints</h3>
+        <strong id="totalComplaints">0</strong>
+      </div>
+      <div class="stat-card pending-card">
+        <h3>Pending Work</h3>
+        <strong id="totalPending">0</strong>
+      </div>
+      <div class="stat-card">
+        <h3>Map Reports</h3>
+        <strong id="totalReports">0</strong>
+      </div>
+      <div class="stat-card">
+        <h3>Registered Users</h3>
+        <strong id="totalUsers">0</strong>
+      </div>
+      <div class="stat-card">
+        <h3>Administrators</h3>
+        <strong id="totalAdmins">0</strong>
+      </div>
+    </section>
+
+    <!-- Separate dashboard for every category -->
+    <nav id="catNav" class="tab-nav" aria-label="Categories"></nav>
+    <section class="panel">
+      <h2>Category Dashboards</h2>
+      <p>Every category has its own department and a team of workers. Open a category to see its workers, queue and work.</p>
+      <div id="categoryCards" class="cat-grid"></div>
+    </section>
+
+    <!-- One dashboard for every technician -->
+    <section class="panel">
+      <h2>Technicians</h2>
+      <p>Open a technician to see the work assigned to him or her, and the finished work.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Technician</th><th>Category</th><th>Open jobs</th><th>Completed</th><th>Availability</th></tr></thead>
+          <tbody id="techTable"><tr><td colspan="5">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Pending queue (extra work that has no free worker) -->
+    <section class="panel">
+      <h2>Pending Work (<span id="pendingCount">0</span>)</h2>
+      <p>Complaints and reports waiting because every worker of their category is full. They are assigned automatically when a worker finishes a job.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>ID</th><th>Category</th><th>Description</th><th>Citizen</th><th>Waiting since</th></tr></thead>
+          <tbody id="pendingTable"><tr><td colspan="6">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Complaint management -->
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <h2>Complaint Management</h2>
+          <p>View and manage complaints submitted by all users.</p>
+        </div>
+        <input id="searchComplaints" type="search"
+          placeholder="Search complaints and reports...">
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Citizen</th>
+              <th>Complaint</th>
+              <th>Category</th>
+              <th>Confidence</th>
+              <th>Ward</th>
+              <th>Department</th>
+              <th>Worker</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="complaintTable">
+            <tr><td colspan="10">Loading complaints...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Map report management -->
+    <section class="panel">
+      <div class="section-heading">
+        <div>
+          <h2>Map Reports</h2>
+          <p>Reports pinned on the map. Only admins can change their status.</p>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Citizen</th>
+              <th>Report</th>
+              <th>Category</th>
+              <th>Area</th>
+              <th>Location</th>
+              <th>Worker</th>
+              <th>Neighbour votes</th>
+              <th>Status</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="reportTable">
+            <tr><td colspan="10">Loading reports...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- Statistics -->
+    <section class="two-columns">
+      <div class="panel">
+        <h2>Complaints by Status</h2>
+        <div id="statusStats"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Complaints by Category</h2>
+        <div id="categoryStats"></div>
+      </div>
+
+      <div class="panel">
+        <h2>Map Reports by Status</h2>
+        <div id="reportStatusStats"></div>
+      </div>
+    </section>
+
+    <!-- User management -->
+    <section class="panel">
+      <h2>Registered Users</h2>
+      <p>View registered accounts and their roles.</p>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Name</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Registered On</th>
+            </tr>
+          </thead>
+          <tbody id="userTable">
+            <tr><td colspan="5">Loading users...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      Smart Complaint Assistant · Admin Panel
+    </footer>
+  </main>
+
+  <script>
+    // Logout that works even if the other scripts fail to load or the server is not answering.
+    document.getElementById("logout").addEventListener("click", function () {
+      var token = sessionStorage.getItem("token");
+      sessionStorage.removeItem("token"); sessionStorage.removeItem("user");
+      try { fetch((location.port === "8000" ? "" : "http://127.0.0.1:8000") + "/api/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token }, keepalive: true }); } catch (e) {}
+      location.href = "index.html?logout=1";
+    });
+  </script>
+  <script src="api.js?v=4"></script>
+  <script src="admin-common.js?v=4"></script>
+  <script src="admin.js?v=4"></script>
+  <script>
+    if (typeof checkAdmin === "undefined") {
+      var s = document.getElementById("status");
+      s.textContent = "admin-common.js or admin.js was not found in the frontend folder. Copy all the new files, then press Ctrl+F5.";
+      s.className = "status error";
+    }
+  </script>
+
+</body>
+</html>

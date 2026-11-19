@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sign In · Smart Complaint Assistant</title>
+  <meta name="description" content="Access the citizen reporting and civic complaint resolution platform.">
+  <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
+
+  <!-- Google Fonts: Figtree -->
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap"
+    rel="stylesheet">
+
+  <!-- Design System & Modular Stylesheets -->
+  <link rel="stylesheet" href="css/tokens.css?v=2">
+  <link rel="stylesheet" href="css/base.css?v=2">
+  <link rel="stylesheet" href="css/components.css?v=2">
+  <link rel="stylesheet" href="css/auth.css?v=2">
+</head>
+
+<body class="auth-page">
+
+  <div class="auth-split">
+    <!-- Left Hero Brand Artwork Panel -->
+    <aside class="auth-panel">
+      <a class="brand" href="civic.html" aria-label="Smart Complaint Assistant">
+        <span class="logo-img" aria-hidden="true">
+          <svg width="34" height="34" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="16" cy="16" r="16" fill="#1F3A5F" />
+            <path d="M16 6C11.58 6 8 9.58 8 14C8 19.5 16 26 16 26C16 26 24 19.5 24 14C24 9.58 20.42 6 16 6Z"
+              fill="#2E6DA4" />
+            <circle cx="16" cy="13.5" r="3.5" fill="#FFFFFF" />
+            <path d="M14.5 13.5L15.8 14.8L18.2 12" stroke="#0F9D8A" stroke-width="1.8" stroke-linecap="round"
+              stroke-linejoin="round" />
+            <circle cx="23" cy="9" r="2.5" fill="#F2A33A" />
+          </svg>
+        </span>
+        <span style="font-weight: 800; letter-spacing: -0.01em;">Smart Complaint Assistant</span>
+      </a>
+
+      <div class="auth-panel-content">
+        <p class="eyebrow" style="color: var(--color-accent); font-weight: 700;">Government-Grade Civic Tech</p>
+        <h2>Empowering communities through responsive civic technology.</h2>
+        <p>Report municipal issues with automated ML classification, spot duplicate incidents in real-time, and verify
+          neighbourhood resolutions with fellow residents.</p>
+      </div>
+
+      <div class="auth-panel-foot">
+        <span>© 2026 Smart Complaint Assistant · Citizen Incident Management</span>
+      </div>
+    </aside>
+
+    <!-- Right Authentication Form Panel -->
+    <main class="auth-form-wrap">
+      <div
+        style="width: 100%; max-width: 440px; display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-4);">
+        <a href="civic.html" class="link-btn" style="text-decoration: none; font-size: 0.875rem;">← Back to Map</a>
+        <!-- Theme Toggle -->
+        <button type="button" class="theme-toggle icon-btn" id="themeToggle" aria-label="Toggle dark/light mode"
+          title="Toggle dark/light mode">
+          <span class="theme-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+            </svg>
+          </span>
+        </button>
+      </div>
+
+      <div class="auth-card">
+        <div id="serverWarning" class="banner error hidden" role="alert"></div>
+
+        <section class="card">
+          <div class="card-head" style="margin-bottom: var(--space-4);">
+            <div>
+              <p class="eyebrow">Citizen Portal</p>
+              <h1>Smart Complaint Assistant</h1>
+              <p class="sub">Log in to report a civic issue and track its progress.</p>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist">
+            <button id="tabLogin" class="tab active" type="button" role="tab">Log in</button>
+            <button id="tabRegister" class="tab" type="button" role="tab">Register</button>
+          </div>
+
+          <form id="loginForm">
+            <label for="loginEmail">Email</label>
+            <input id="loginEmail" type="email" autocomplete="username" placeholder="you@example.com" required />
+
+            <label for="loginPassword">Password</label>
+            <input id="loginPassword" type="password" autocomplete="current-password" placeholder="Enter your password"
+              required />
+
+            <button class="primary wide" type="submit">Log in →</button>
+          </form>
+
+          <form id="registerForm" class="hidden">
+            <label for="regRole">Register as</label>
+            <select id="regRole"
+              style="width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color, #ccc); background: var(--bg-card, #fff); color: var(--text-main, #333);">
+              <option value="user">Citizen / Resident</option>
+              <option value="technician">Field Technician</option>
+            </select>
+
+            <label for="regName">Full name</label>
+            <input id="regName" type="text" autocomplete="name" minlength="2" placeholder="e.g. Ramesh Kumar"
+              required />
+
+            <label for="regEmail">Email</label>
+            <input id="regEmail" type="email" autocomplete="email" placeholder="you@example.com" required />
+
+            <label for="regPassword">Password (min 6 characters)</label>
+            <input id="regPassword" type="password" autocomplete="new-password" minlength="6"
+              placeholder="At least 6 characters" required />
+
+            <button class="primary wide" type="submit">Create account →</button>
+          </form>
+
+          <p id="status" class="status" role="status"></p>
+
+          <div class="demo-helper">
+            <strong>Demo Credentials (Click to fill):</strong>
+            <span style="font-size: 0.8125rem; color: var(--text-muted); margin-top: 4px;">
+              Citizen: <code id="demoEmail" title="Click to fill email">demo.reporter@example.com</code> / <code
+                id="demoPass" title="Click to fill password">demo-pass-123</code>
+            </span>
+            <span style="font-size: 0.8125rem; color: var(--text-muted);">
+              Technician: <code id="demoTechEmail" title="Click to fill email">technision@gmail.com</code> / <code
+                id="demoTechPass" title="Click to fill password">demo-pass-123</code>
+            </span>
+            <span style="font-size: 0.8125rem; color: var(--text-muted);">
+              Admin: <code id="demoAdminEmail" title="Click to fill email">admin@gmail.com</code> / <code
+                id="demoAdminPass" title="Click to fill password">demo-pass-123</code>
+            </span>
+          </div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="login.js"></script>
+  <script>
+    // Demo credentials helper click-to-fill
+    function bindFill(btnId, passId, emailVal, passVal) {
+      document.getElementById(btnId)?.addEventListener('click', function () {
+        const emailInput = document.getElementById('loginEmail');
+        const passInput = document.getElementById('loginPassword');
+        if (emailInput) { emailInput.value = emailVal; emailInput.focus(); }
+        if (passInput) { passInput.value = passVal; }
+      });
+      document.getElementById(passId)?.addEventListener('click', function () {
+        const passInput = document.getElementById('loginPassword');
+        if (passInput) { passInput.value = passVal; passInput.focus(); }
+      });
+    }
+    bindFill('demoEmail', 'demoPass', 'demo.reporter@example.com', 'demo-pass-123');
+    bindFill('demoTechEmail', 'demoTechPass', 'technision@gmail.com', 'demo-pass-123');
+    bindFill('demoAdminEmail', 'demoAdminPass', 'admin@gmail.com', 'demo-pass-123');
+  </script>
+</body>
+
+</html>

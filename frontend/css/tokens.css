@@ -1,0 +1,151 @@
+/* ===================================================================
+   SMART COMPLAINT ASSISTANT — DESIGN SYSTEM TOKENS (tokens.css)
+   Mood: Trustworthy, authoritative, modern civic tech.
+   Meets WCAG AA contrast standards in both light & dark modes.
+   =================================================================== */
+
+:root {
+  /* Brand Core Palette */
+  --color-primary: #1F3A5F;
+  /* Deep Civic Navy */
+  --color-primary-hover: #162B47;
+  --color-primary-light: #2E6DA4;
+  /* Vivid Blue */
+  --color-primary-subtle: #EDF4FA;
+
+  --color-secondary: #0F9D8A;
+  /* Civic Teal */
+  --color-secondary-hover: #0C8272;
+  --color-secondary-subtle: #E6F7F5;
+
+  --color-accent: #F2A33A;
+  /* Warm Amber / Saffron */
+  --color-accent-hover: #D98822;
+  --color-accent-subtle: #FEF6EB;
+
+  /* Status Tokens (Text + Icon + Background) */
+  --status-open-color: #E11D48;
+  --status-open-bg: #FFE4E6;
+  --status-open-border: #FDA4AF;
+
+  --status-progress-color: #D97706;
+  --status-progress-bg: #FEF3C7;
+  --status-progress-border: #FCD34D;
+
+  --status-verify-color: #7C3AED;
+  --status-verify-bg: #EDE9FE;
+  --status-verify-border: #C4B5FD;
+
+  --status-closed-color: #059669;
+  --status-closed-bg: #D1FAE5;
+  --status-closed-border: #6EE7B7;
+
+  /* Light Theme Surfaces & Text */
+  --bg-app: #F6F8FB;
+  --bg-surface: #FFFFFF;
+  --bg-surface-elevated: #FFFFFF;
+  --bg-surface-glass: rgba(255, 255, 255, 0.88);
+  --bg-surface-subtle: #F1F5F9;
+
+  --text-primary: #0F172A;
+  /* Slate 900 */
+  --text-secondary: #334155;
+  /* Slate 700 */
+  --text-muted: #64748B;
+  /* Slate 500 */
+  --text-inverse: #FFFFFF;
+
+  --border-subtle: #E2E8F0;
+  --border-medium: #CBD5E1;
+  --border-focus: #2E6DA4;
+
+  /* Shadows */
+  --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-sm: 0 1px 3px rgba(15, 23, 42, 0.08), 0 1px 2px rgba(15, 23, 42, 0.04);
+  --shadow-md: 0 4px 14px -1px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04);
+  --shadow-lg: 0 10px 28px -3px rgba(15, 23, 42, 0.12), 0 4px 10px -2px rgba(15, 23, 42, 0.04);
+  --shadow-xl: 0 20px 35px -5px rgba(15, 23, 42, 0.16), 0 10px 15px -5px rgba(15, 23, 42, 0.06);
+
+  /* Radius */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-full: 9999px;
+
+  /* Spacing Scale */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* Typography */
+  --font-sans: 'Figtree', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Transitions */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-normal: 220ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Dark Theme System */
+[data-theme="dark"] {
+  --color-primary: #3B82F6;
+  --color-primary-hover: #60A5FA;
+  --color-primary-light: #60A5FA;
+  --color-primary-subtle: rgba(59, 130, 246, 0.16);
+
+  --color-secondary: #14B8A6;
+  --color-secondary-hover: #2DD4BF;
+  --color-secondary-subtle: rgba(20, 184, 166, 0.16);
+
+  --color-accent: #FBBF24;
+  --color-accent-hover: #FCD34D;
+  --color-accent-subtle: rgba(251, 191, 36, 0.16);
+
+  /* Status Tokens Dark */
+  --status-open-color: #FB7185;
+  --status-open-bg: rgba(225, 29, 72, 0.2);
+  --status-open-border: rgba(251, 113, 133, 0.4);
+
+  --status-progress-color: #FBBF24;
+  --status-progress-bg: rgba(217, 119, 6, 0.2);
+  --status-progress-border: rgba(251, 191, 36, 0.4);
+
+  --status-verify-color: #A78BFA;
+  --status-verify-bg: rgba(124, 58, 237, 0.2);
+  --status-verify-border: rgba(167, 139, 250, 0.4);
+
+  --status-closed-color: #34D399;
+  --status-closed-bg: rgba(5, 150, 105, 0.2);
+  --status-closed-border: rgba(52, 211, 153, 0.4);
+
+  /* Surfaces & Text Dark */
+  --bg-app: #0B132B;
+  --bg-surface: #131E3A;
+  --bg-surface-elevated: #1C2B4E;
+  --bg-surface-glass: rgba(19, 30, 58, 0.9);
+  --bg-surface-subtle: #182647;
+
+  --text-primary: #F8FAFC;
+  --text-secondary: #CBD5E1;
+  --text-muted: #94A3B8;
+  --text-inverse: #0F172A;
+
+  --border-subtle: #1E293B;
+  --border-medium: #334155;
+  --border-focus: #60A5FA;
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 6px 18px rgba(0, 0, 0, 0.45);
+  --shadow-lg: 0 14px 34px rgba(0, 0, 0, 0.55);
+  --shadow-xl: 0 24px 44px rgba(0, 0, 0, 0.65);
+}

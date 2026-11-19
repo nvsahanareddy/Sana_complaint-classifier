@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Category Dashboard | Smart Complaint Assistant</title>
+  <link rel="stylesheet" href="admin.css?v=3">
+</head>
+<body>
+
+  <header class="topbar">
+    <div>
+      <h2>Smart Complaint Assistant</h2>
+      <p>Category Dashboard</p>
+    </div>
+    <div class="top-actions">
+      <a href="admin.html">← Admin Dashboard</a>
+      <a href="civic.html">Open Map</a>
+      <span id="adminName">Admin</span>
+      <button id="logout" class="logout-btn">Logout</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <nav id="catNav" class="tab-nav" aria-label="Categories"></nav>
+
+    <section class="welcome">
+      <div>
+        <h1 id="catTitle">Category</h1>
+        <p id="catDept"></p>
+      </div>
+      <button id="refreshBtn">Refresh Data</button>
+    </section>
+
+    <p id="status" class="status"></p>
+
+    <section class="stats">
+      <div class="stat-card"><h3>Workers</h3><strong id="sWorkers">0</strong></div>
+      <div class="stat-card"><h3>Open work / capacity</h3><strong id="sActive">0</strong></div>
+      <div class="stat-card pending-card" id="pendingCard"><h3>Pending (no free worker)</h3><strong id="sPending">0</strong></div>
+      <div class="stat-card"><h3>Resolved / closed</h3><strong id="sResolved">0</strong></div>
+      <div class="stat-card"><h3>Total work</h3><strong id="sTotal">0</strong></div>
+    </section>
+
+    <section class="panel">
+      <h2>Workers</h2>
+      <p>Work is given to the least busy worker automatically. Each worker can hold a limited number of open jobs.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Worker</th><th>Load</th><th>Current work</th></tr></thead>
+          <tbody id="workerTable"><tr><td colspan="3">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Pending queue</h2>
+      <p>Extra work that is waiting because every worker is full. It is assigned automatically, oldest first, when a worker finishes a job.</p>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Type</th><th>ID</th><th>Description</th><th>Citizen</th><th>Waiting since</th></tr></thead>
+          <tbody id="pendingTable"><tr><td colspan="5">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Complaints</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Citizen</th><th>Complaint</th><th>Ward</th><th>Confidence</th><th>Worker</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="complaintTable"><tr><td colspan="8">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Map reports</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>ID</th><th>Citizen</th><th>Report</th><th>Area</th><th>Worker</th><th>Status</th><th>Actions</th></tr></thead>
+          <tbody id="reportTable"><tr><td colspan="7">Loading...</td></tr></tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>Smart Complaint Assistant · Category Dashboard</footer>
+  </main>
+
+  <script>
+    // Logout that works even if the other scripts fail to load or the server is not answering.
+    document.getElementById("logout").addEventListener("click", function () {
+      var token = sessionStorage.getItem("token");
+      sessionStorage.removeItem("token"); sessionStorage.removeItem("user");
+      try { fetch((location.port === "8000" ? "" : "http://127.0.0.1:8000") + "/api/auth/logout", { method: "POST", headers: { Authorization: "Bearer " + token }, keepalive: true }); } catch (e) {}
+      location.href = "index.html?logout=1";
+    });
+  </script>
+  <script src="api.js?v=4"></script>
+  <script src="admin-common.js?v=4"></script>
+  <script src="category.js?v=4"></script>
+  <script>
+    if (typeof checkAdmin === "undefined") {
+      var s = document.getElementById("status");
+      s.textContent = "admin-common.js or category.js was not found in the frontend folder. Copy all the new files, then press Ctrl+F5.";
+      s.className = "status error";
+    }
+  </script>
+
+</body>
+</html>

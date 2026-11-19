@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="pinGrad" x1="8" y1="4" x2="40" y2="44" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#2E6DA4"/>
+      <stop offset="100%" stop-color="#1F3A5F"/>
+    </linearGradient>
+    <linearGradient id="checkGrad" x1="16" y1="18" x2="32" y2="30" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#14B8A6"/>
+      <stop offset="100%" stop-color="#0F9D8A"/>
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <!-- Pin Base Shape with speech curve -->
+  <path d="M24 4C14.06 4 6 12.06 6 22c0 10.75 13.9 20.9 16.7 22.8.8.55 1.8.55 2.6 0C28.1 42.9 42 32.75 42 22 42 12.06 33.94 4 24 4Z" fill="url(#pinGrad)" filter="url(#shadow)"/>
+  <!-- Inner circular badge -->
+  <circle cx="24" cy="20" r="12" fill="#FFFFFF"/>
+  <!-- Checkmark + Verification Symbol -->
+  <path d="M18 20.5l4 4 8-8" stroke="url(#checkGrad)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Amber Accent Pulse Dot -->
+  <circle cx="34" cy="10" r="3" fill="#F2A33A"/>
+</svg>

@@ -1,0 +1,115 @@
+/* ===================================================================
+   SMART COMPLAINT ASSISTANT — AUTHENTICATION (auth.css)
+   Split-screen login & registration, demo credentials helper
+   =================================================================== */
+
+.auth-page {
+  min-height: 100vh;
+  display: flex;
+  background: var(--bg-app);
+}
+
+.auth-split {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  width: 100%;
+  min-height: 100vh;
+}
+
+@media (max-width: 900px) {
+  .auth-split {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Left Branded Art Panel */
+.auth-panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: var(--space-10) var(--space-8);
+  background: linear-gradient(135deg, rgba(31, 58, 95, 0.95), rgba(15, 157, 138, 0.9)), url('../assets/images/auth-panel.png') center/cover no-repeat;
+  color: #FFFFFF;
+}
+
+@media (max-width: 900px) {
+  .auth-panel {
+    display: none;
+  }
+}
+
+.auth-panel .brand {
+  color: #FFFFFF;
+  font-size: 1.35rem;
+}
+
+.auth-panel-content h2 {
+  font-size: 2.25rem;
+  color: #FFFFFF;
+  line-height: 1.25;
+  margin-bottom: var(--space-4);
+}
+
+.auth-panel-content p {
+  font-size: 1.1rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.6;
+  max-width: 480px;
+}
+
+.auth-panel-foot {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Right Form Container */
+.auth-form-wrap {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: var(--space-8) var(--space-6);
+  width: 100%;
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 440px;
+}
+
+.auth-card h1 {
+  font-size: 1.75rem;
+  margin-bottom: var(--space-1);
+}
+
+.auth-card p.sub {
+  color: var(--text-muted);
+  font-size: 0.9375rem;
+  margin-bottom: var(--space-6);
+}
+
+/* Demo Credentials Helper Box */
+.demo-helper {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  background: var(--color-primary-subtle);
+  border: 1px dashed var(--color-primary-light);
+  border-radius: var(--radius-md);
+  margin-top: var(--space-4);
+  font-size: 0.8125rem;
+}
+
+.demo-helper strong {
+  color: var(--color-primary);
+}
+
+.demo-helper code {
+  font-family: var(--font-mono);
+  background: var(--bg-surface);
+  padding: 2px 6px;
+  border-radius: var(--radius-xs);
+  cursor: pointer;
+}

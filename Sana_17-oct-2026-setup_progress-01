@@ -1,0 +1,163 @@
+# 🗂️ Setup Progress Tracker
+### Smart Complaint Classification & Similarity Detection
+
+---
+
+## ✅ What Has Been Done (Completed)
+
+### 1. Project Analysis ✅
+- Fully analyzed all source files in the project
+- Generated a **complete analysis report** covering:
+  - Project overview and purpose
+  - Full tech stack
+  - System architecture
+  - Database schema
+  - ML / data retrieval techniques
+  - How to run and test
+  - 13 documented bugs with severity ratings
+- Report saved as: `project_analysis_report.md`
+
+---
+
+### 2. Python Setup ✅
+- Confirmed Python **3.15** was already installed on the machine
+- Identified that **Python 3.15 is too new** — libraries like numpy, faiss-cpu are not compatible
+- Recommended and action taken: **Install Python 3.11** (stable, fully compatible)
+
+> ⚠️ **Status:** Python 3.11 download/install needs to be confirmed.
+> When you open PowerShell, run `py -3.11 --version` to confirm it's available.
+
+---
+
+### 3. Old `.venv` Deleted ✅
+- The original `.venv` folder was **copied from another person's computer** (a user named "Vinayaka" at path `C:\Users\Vinayaka\Desktop\...`)
+- Virtual environments can never be copied between machines — hardcoded paths inside them break everything
+- The broken `.venv` was deleted using:
+  ```powershell
+  Remove-Item -Recurse -Force "c:\Users\dilan\Downloads\complaint-classifier (2)\Sana_complaint-classifier\backend\.venv"
+  ```
+
+---
+
+### 4. Fresh `.venv` Created ✅
+- A brand new virtual environment was created using Python 3.11:
+  ```powershell
+  py -3.11 -m venv .venv
+  .venv\Scripts\activate
+  ```
+
+---
+
+### 5. All Libraries Installed ✅
+- Ran `pip install -r requirements.txt` successfully
+- All packages installed (confirmed by the pip notice message at the end):
+  ```
+  [notice] A new release of pip is available: 24.0 -> 26.2.1
+  ```
+- Installed packages include:
+  - `fastapi`, `uvicorn` — web server
+  - `numpy`, `pandas`, `scikit-learn` — data & ML
+  - `sentence-transformers`, `torch` — text embeddings
+  - `faiss-cpu` — vector search
+  - `joblib` — model persistence
+  - and all their dependencies
+
+---
+
+## ⏳ What Still Needs to Be Done (Pending)
+
+> Run these commands **in this exact order**, from the `backend` folder with `.venv` active.
+
+### Every time you open a new terminal — activate first:
+```powershell
+cd "c:\Users\dilan\Downloads\complaint-classifier (2)\Sana_complaint-classifier\backend"
+.venv\Scripts\activate
+```
+✅ You'll see `(.venv)` at the start of the line when it's active.
+
+---
+
+### Step 1 — Generate the dataset (run ONCE)
+```powershell
+python -m ml.generate_data
+```
+**What it does:** Creates `backend/data/complaints.csv` with 640 synthetic civic complaints across 8 categories.
+
+---
+
+### Step 2 — Train the ML classifier (run ONCE)
+```powershell
+python -m ml.train_classifier
+```
+**What it does:** Trains a Logistic Regression model on sentence embeddings. Saves `backend/models/classifier.joblib`. Takes ~2–5 minutes (downloads the embedding model on first run).
+
+---
+
+### Step 3 — Build the FAISS search index (run ONCE)
+```powershell
+python -m ml.build_index
+```
+**What it does:** Converts all 640 complaints into 384-dim vectors and stores them in `backend/models/complaints.faiss`.
+
+---
+
+### Step 4 — Seed demo map data (run ONCE, optional but recommended)
+```powershell
+python seed_demo.py
+```
+**What it does:** Adds 12 sample map reports around Bengaluru so the map has pins to look at. Also creates two demo accounts:
+- Email: `demo.reporter@example.com` | Password: `demo-pass-123`
+- Email: `demo.neighbour@example.com` | Password: `demo-pass-123`
+
+---
+
+### Step 5 — Start the server 🚀
+```powershell
+uvicorn app.main:app --reload
+```
+**What it does:** Starts the FastAPI web server. Keep this terminal open while using the app.
+
+---
+
+### Step 6 — Open in browser 🌐
+```
+http://127.0.0.1:8000
+```
+
+---
+
+## 📌 Quick Restart Checklist (for future sessions)
+
+After the one-time setup above is done, every time you want to run the app:
+
+```powershell
+# 1. Navigate to backend
+cd "c:\Users\dilan\Downloads\complaint-classifier (2)\Sana_complaint-classifier\backend"
+
+# 2. Activate venv
+.venv\Scripts\activate
+
+# 3. Start server
+uvicorn app.main:app --reload
+
+# 4. Open browser at http://127.0.0.1:8000
+```
+
+---
+
+## 📁 Project Location
+```
+c:\Users\dilan\Downloads\complaint-classifier (2)\Sana_complaint-classifier\
+├── backend\         ← all Python/ML code lives here
+│   ├── .venv\       ← virtual environment (DONE ✅)
+│   ├── app\         ← FastAPI server
+│   ├── ml\          ← ML scripts (generate, train, index)
+│   ├── data\        ← complaints.csv will be created here
+│   ├── models\      ← classifier.joblib + complaints.faiss will be created here
+│   └── seed_demo.py
+└── frontend\        ← HTML/CSS/JS (served automatically by the backend)
+```
+
+---
+
+*Last updated: 2026-10-17 at 11:55 IST*
