@@ -14,7 +14,7 @@
       <p>Technician Dashboard</p>
     </div>
     <div class="top-actions">
-      <a href="admin.html">← Admin Dashboard</a>
+      <a id="adminDashboardLink" href="admin.html">← Admin Dashboard</a>
       <a href="civic.html">Open Map</a>
       <span id="adminName">Admin</span>
       <button id="logout" class="logout-btn">Logout</button>
@@ -84,11 +84,11 @@
   </script>
   <script src="api.js?v=4"></script>
   <script src="admin-common.js?v=4"></script>
-  <script src="technician.js?v=4"></script>
+  <script src="technician.js?v=5"></script>
   <script>
-    if (typeof checkAdmin === "undefined") {
+    if (typeof checkStaff === "undefined" || typeof renderTechnician === "undefined") {
       var s = document.getElementById("status");
-      s.textContent = "admin-common.js or technician.js was not found in the frontend folder. Copy all the new files, then press Ctrl+F5.";
+      s.textContent = "admin-common.js or technician.js was not found. Copy the updated frontend files, then press Ctrl+F5.";
       s.className = "status error";
     }
   </script>

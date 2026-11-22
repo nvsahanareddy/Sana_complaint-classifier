@@ -411,6 +411,8 @@ function setAuthMode(mode) {
   $("tabLogin").classList.toggle("active", mode === "login");
   $("tabRegister").classList.toggle("active", mode === "register");
   $("nameRow").hidden = mode !== "register";
+  $("authRoleRow").hidden = mode !== "register";
+  $("authCategoryRow").hidden = mode !== "register" || $("authRole").value !== "technician";
   $("authSubmit").textContent = mode === "login" ? "Log in" : "Create account";
   $("authPass").autocomplete = mode === "login" ? "current-password" : "new-password";
   $("authError").hidden = true;
@@ -436,12 +438,26 @@ $("authForm").addEventListener("submit", async (ev) => {
   }
   setBusy($("authSubmit"), true, "Please wait…");
   try {
-    const body = authMode === "login" ? { email, password } : { name, email, password };
+    const body = authMode === "login" ? { email, password } : {
+      name,
+      email,
+      password,
+      role: $("authRole").value,
+      ...($("authRole").value === "technician" ? { category: $("authCategory").value } : {}),
+    };
     const data = await call(`/api/auth/${authMode}`, { method: "POST", body });
     Session.save(data.token, data.user);
     await refreshMe(); renderUser();
     $("authDlg").close(); $("authPass").value = "";
     toast(`Welcome, ${data.user.name}!`);
+    if (data.user.role === "admin") {
+      location.href = "admin.html";
+      return;
+    }
+    if (data.user.role === "technician" || data.user.role === "technision") {
+      location.href = "technician.html";
+      return;
+    }
     if (afterLogin) { const f = afterLogin; afterLogin = null; f(); }
   } catch (e) { err.textContent = e.message; err.hidden = false; }
   finally { setBusy($("authSubmit"), false); }
@@ -462,6 +478,9 @@ $("signOutBtn").addEventListener("click", () => {   // instant: does not wait fo
 });
 $("tabLogin").addEventListener("click", () => setAuthMode("login"));
 $("tabRegister").addEventListener("click", () => setAuthMode("register"));
+$("authRole").addEventListener("change", () => {
+  $("authCategoryRow").hidden = $("authRole").value !== "technician";
+});
 $("locateBtn").addEventListener("click", () => locate((la, ln) => map.flyTo([la, ln], 15)));
 $("useGps").addEventListener("click", () => locate((la, ln) => { setPin(la, ln); map.flyTo([la, ln], 16); }));
 $("analyzeBtn").addEventListener("click", analyze);

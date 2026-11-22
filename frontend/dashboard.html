@@ -7,11 +7,12 @@
   <meta name="description" content="Citizen complaint submission, tracking, and notification center with duplicate detection and resolution recommendations.">
   <link rel="icon" type="image/svg+xml" href="assets/icons/favicon.svg">
 
-  <!-- Admins never see the citizen form: send them to the admin panel before anything renders. -->
+  <!-- Staff use their work dashboards instead of the citizen submission form. -->
   <script>
     try {
       const u = JSON.parse(sessionStorage.getItem("user") || "null");
       if (u && u.role === "admin") location.replace("admin.html");
+      else if (u && (u.role === "technician" || u.role === "technision")) location.replace("technician.html");
     } catch (e) { /* ignore */ }
   </script>
 

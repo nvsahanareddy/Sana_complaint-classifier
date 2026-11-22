@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT 'user'
-        CHECK (role IN ('user', 'admin')),
+        CHECK (role IN ('user', 'admin', 'technician', 'technision')),
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -26,7 +26,9 @@ CREATE TABLE IF NOT EXISTS workers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     category TEXT NOT NULL,
-    active INTEGER NOT NULL DEFAULT 1
+    active INTEGER NOT NULL DEFAULT 1,
+    user_id INTEGER REFERENCES users(id),
+    email TEXT
 );
 
 CREATE TABLE IF NOT EXISTS complaints (
@@ -114,8 +116,14 @@ def init_db():
         for table in ("complaints", "reports"):
             if "worker_id" not in _columns(conn, table):
                 conn.execute(f"ALTER TABLE {table} ADD COLUMN worker_id INTEGER REFERENCES workers(id)")
+        worker_columns = _columns(conn, "workers")
+        if "user_id" not in worker_columns:
+            conn.execute("ALTER TABLE workers ADD COLUMN user_id INTEGER REFERENCES users(id)")
+        if "email" not in worker_columns:
+            conn.execute("ALTER TABLE workers ADD COLUMN email TEXT")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_complaints_worker ON complaints(worker_id)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_reports_worker ON reports(worker_id)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_workers_user ON workers(user_id)")
 
 
 @contextmanager

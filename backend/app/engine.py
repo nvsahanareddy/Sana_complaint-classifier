@@ -40,7 +40,10 @@ class ComplaintEngine:
 
         self.df = pd.read_csv(DATA_PATH).fillna("")
         self.rows = self.df.to_dict("records")
-        self.model = SentenceTransformer(EMBED_MODEL)
+        try:
+            self.model = SentenceTransformer(EMBED_MODEL, local_files_only=True)
+        except Exception:
+            self.model = SentenceTransformer(EMBED_MODEL)
         self.clf = joblib.load(CLASSIFIER_PATH)
         self.index = faiss.read_index(str(INDEX_PATH))
 
