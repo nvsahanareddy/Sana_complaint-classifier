@@ -126,7 +126,8 @@ def public_view(d: dict, user: dict) -> dict:
     return {k: v for k, v in d.items() if k not in HIDDEN_FOR_USERS}
 
 
-def public_cases(cases: list, user: dict) -> list:
+def public_cases(cases: list, _user: dict) -> list:
+    del _user
     return cases
 
 
@@ -306,11 +307,7 @@ class StatusIn(BaseModel):
 def me(user: dict = Depends(auth.current_user)):
     """Logged-in user's details and role."""
     with db.connect() as conn:
-        w_row = conn.execute(
-            "SELECT id FROM workers WHERE user_id = ? OR email = ?",
-            (user["id"], user.get("email", "")),
-        ).fetchone()
-        worker_id = w_row["id"] if w_row else (1 if user.get("role") in ("technician", "technision") else None)
+        worker_id = assign.worker_id_for_user(conn, user)
     return {
         "user": {"id": user["id"], "name": user["name"], "email": user["email"], "role": user["role"]},
         "is_admin": is_admin(user),
@@ -366,8 +363,8 @@ def my_reports(user: dict = Depends(auth.require_user)):
     return {"reports": [dict(r) for r in rows]}
 
 
-@router.get("/admin/reports")
-def admin_reports(admin: dict = Depends(auth.require_admin)):
+@router.get("/admin/reports", dependencies=[Depends(auth.require_admin)])
+def admin_reports():
     """Admin sees every report with reporter details and neighbour votes."""
     with db.connect() as conn:
         rows = conn.execute(
@@ -399,6 +396,7 @@ def preview(body: PreviewIn, user: dict = Depends(auth.current_user)):
     department = eng.department_for(category)
     typical = eng.typical_days(category)
     vec = eng.embed([combined])[0]
+    nearby_duplicates = find_nearby_similar(vec, body.lat, body.lng)
 
     result = {
         "category": category,
@@ -406,7 +404,8 @@ def preview(body: PreviewIn, user: dict = Depends(auth.current_user)):
         "top_categories": [{"category": c, "probability": round(p, 3)} for c, p in top],
         "department": department,
         "typical_days": typical,
-        "possible_duplicates": find_nearby_similar(vec, body.lat, body.lng),
+        "possible_duplicates": nearby_duplicates,
+        "nearby_duplicates": nearby_duplicates,
         "past_cases": eng.similar(combined, k=3, category=category, resolved_only=True),
         "draft": make_draft(
             user, category, department, body.title, body.text,
@@ -414,7 +413,7 @@ def preview(body: PreviewIn, user: dict = Depends(auth.current_user)):
         ),
     }
     result["past_cases"] = public_cases(result["past_cases"], user)
-    return public_view(result, user)
+    return result
 
 
 @router.post("/reports")
@@ -553,6 +552,10 @@ def set_status(report_id: int, body: StatusIn, user: dict = Depends(auth.require
         ).fetchone()
         if not rep:
             raise HTTPException(404, "Report not found.")
+        if auth.is_technician(user):
+            worker_id = assign.worker_id_for_user(conn, user)
+            if worker_id is None or rep["worker_id"] != worker_id:
+                raise HTTPException(403, "You can only update reports assigned to you.")
 
         if body.status != "closed" and rep["worker_id"] is None:   # a pending report needs a free worker first
             w = assign.pick_worker(conn, rep["category"])

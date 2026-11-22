@@ -344,8 +344,26 @@
         <button type="button" id="tabLogin" class="tab active" role="tab">Log in</button>
         <button type="button" id="tabRegister" class="tab" role="tab">Register</button>
       </div>
+      <label id="authRoleRow" hidden>Register as
+        <select id="authRole">
+          <option value="user">Citizen / Resident</option>
+          <option value="technician">Field Technician</option>
+        </select>
+      </label>
       <label id="nameRow" hidden>Name
         <input id="authName" type="text" autocomplete="name" maxlength="100" placeholder="e.g. Ramesh Kumar">
+      </label>
+      <label id="authCategoryRow" hidden>Technician category
+        <select id="authCategory">
+          <option value="Roads and Potholes">Roads and Potholes</option>
+          <option value="Garbage and Sanitation">Garbage and Sanitation</option>
+          <option value="Street Lights">Street Lights</option>
+          <option value="Water Supply" selected>Water Supply</option>
+          <option value="Drainage and Sewage">Drainage and Sewage</option>
+          <option value="Noise and Pollution">Noise and Pollution</option>
+          <option value="Public Transport">Public Transport</option>
+          <option value="Encroachment and Illegal Construction">Encroachment and Illegal Construction</option>
+        </select>
       </label>
       <label>Email
         <input id="authEmail" type="email" autocomplete="email" placeholder="you@example.com">
@@ -367,6 +385,6 @@
 <!-- Scripts -->
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <script src="js/ui.js?v=7"></script>
-<script src="civic.js?v=12"></script>
+<script src="civic.js?v=13"></script>
 </body>
 </html>

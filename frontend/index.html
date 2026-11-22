@@ -107,6 +107,21 @@
               <option value="technician">Field Technician</option>
             </select>
 
+            <div id="techCategoryGroup" class="hidden">
+              <label for="regCategory">Technician category</label>
+              <select id="regCategory"
+                style="width: 100%; margin-bottom: 12px; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color, #ccc); background: var(--bg-card, #fff); color: var(--text-main, #333);">
+                <option value="Roads and Potholes">Roads and Potholes</option>
+                <option value="Garbage and Sanitation">Garbage and Sanitation</option>
+                <option value="Street Lights">Street Lights</option>
+                <option value="Water Supply" selected>Water Supply</option>
+                <option value="Drainage and Sewage">Drainage and Sewage</option>
+                <option value="Noise and Pollution">Noise and Pollution</option>
+                <option value="Public Transport">Public Transport</option>
+                <option value="Encroachment and Illegal Construction">Encroachment and Illegal Construction</option>
+              </select>
+            </div>
+
             <label for="regName">Full name</label>
             <input id="regName" type="text" autocomplete="name" minlength="2" placeholder="e.g. Ramesh Kumar"
               required />
@@ -145,7 +160,7 @@
 
   <script src="api.js"></script>
   <script src="js/ui.js"></script>
-  <script src="login.js"></script>
+  <script src="login.js?v=2"></script>
   <script>
     // Demo credentials helper click-to-fill
     function bindFill(btnId, passId, emailVal, passVal) {

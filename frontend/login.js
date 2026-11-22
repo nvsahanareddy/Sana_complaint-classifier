@@ -17,7 +17,11 @@ async function checkSavedLogin() {
     if (res.ok) {
       const data = await res.json();
       const user = data.user || data;
-      location.href = user.role === "admin" ? "admin.html" : "dashboard.html";
+      location.href = user.role === "admin"
+        ? "admin.html"
+        : user.role === "technician" || user.role === "technision"
+          ? "technician.html"
+          : "dashboard.html";
       return;
     }
   } catch { /* the server is not answering */ }
@@ -58,6 +62,8 @@ async function submitAuth(path, body) {
 
     if (data.user?.role === "admin" || data.user?.is_admin) {
       location.href = "admin.html";
+    } else if (data.user?.role === "technician" || data.user?.role === "technision") {
+      location.href = "technician.html";
     } else {
       location.href = "dashboard.html";
     }
@@ -78,11 +84,18 @@ $("loginForm").addEventListener("submit", (e) => {
 $("registerForm").addEventListener("submit", (e) => {
   e.preventDefault();
 
-  submitAuth("/api/auth/register", {
+  const body = {
     name: $("regName").value,
     email: $("regEmail").value,
-    password: $("regPassword").value
-  });
+    password: $("regPassword").value,
+    role: $("regRole").value
+  };
+  if (body.role === "technician") body.category = $("regCategory").value;
+  submitAuth("/api/auth/register", body);
+});
+
+$("regRole").addEventListener("change", (e) => {
+  $("techCategoryGroup").classList.toggle("hidden", e.target.value !== "technician");
 });
 
 // Check whether the backend is running.

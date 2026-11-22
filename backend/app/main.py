@@ -12,6 +12,7 @@ import re
 import sqlite3
 import time
 from contextlib import asynccontextmanager
+from typing import Literal, Optional
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -45,6 +46,7 @@ def seed_admin():
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    del _app
     db.init_db()
     seed_admin()
     state["startup_error"] = None
@@ -119,6 +121,8 @@ class RegisterIn(BaseModel):
     name: str = Field(..., min_length=2, max_length=100)
     email: str = Field(..., max_length=254)
     password: str = Field(..., min_length=6, max_length=200)
+    role: Literal["user", "technician"] = "user"
+    category: Optional[str] = None
 
 
 class LoginIn(BaseModel):
@@ -170,19 +174,19 @@ def health():
     return response
 
 
-@app.post("/api/classify")
-def classify(body: ComplaintIn, admin: dict = Depends(auth.require_admin)):
+@app.post("/api/classify", dependencies=[Depends(auth.require_admin)])
+def classify(body: ComplaintIn):
     category, top = engine().classify(body.text)
     return {"category": category, "confidence": round(top[0][1], 3), "top_categories": top_list(top)}
 
 
-@app.post("/api/similar")
-def similar(body: ComplaintIn, admin: dict = Depends(auth.require_admin)):
+@app.post("/api/similar", dependencies=[Depends(auth.require_admin)])
+def similar(body: ComplaintIn):
     return {"matches": engine().similar(body.text, k=body.k)}
 
 
-@app.post("/api/analyze")
-def analyze(body: ComplaintIn, admin: dict = Depends(auth.require_admin)):
+@app.post("/api/analyze", dependencies=[Depends(auth.require_admin)])
+def analyze(body: ComplaintIn):
     category, top, matches = engine().recommend(body.text, k=body.k)
     for m in matches:
         m["possible_duplicate"] = m["similarity"] >= DUPLICATE_THRESHOLD
@@ -202,18 +206,52 @@ def register(body: RegisterIn):
     if not EMAIL_RE.match(email):
         raise HTTPException(422, "Please enter a valid email address.")
     name = body.name.strip()
+    category = (body.category or "").strip()
+    if body.role == "technician" and category not in assign.CATEGORIES:
+        raise HTTPException(422, "Choose a valid technician category.")
 
     with db.connect() as conn:
+        worker = None
+        if body.role == "technician":
+            worker = conn.execute(
+                "SELECT id, user_id, category FROM workers WHERE lower(email) = ?",
+                (email,),
+            ).fetchone()
+            if worker:
+                if worker["user_id"] is not None:
+                    raise HTTPException(409, "This technician profile is already linked to an account.")
+                if worker["category"] != category:
+                    raise HTTPException(422, f"This worker profile belongs to {worker['category']}.")
+            else:
+                worker_count = conn.execute(
+                    "SELECT COUNT(*) FROM workers WHERE category = ?", (category,)
+                ).fetchone()[0]
+                if worker_count >= assign.MAX_WORKERS_PER_CATEGORY:
+                    raise HTTPException(
+                        409,
+                        f"{category} already has {assign.MAX_WORKERS_PER_CATEGORY} workers. "
+                        "Ask an administrator to link you to an existing profile.",
+                    )
         try:
-            # Role is never taken from the request; the database default is 'user'.
             cur = conn.execute(
-                "INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)",
-                (name, email, auth.hash_password(body.password)),
+                "INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)",
+                (name, email, auth.hash_password(body.password), body.role),
             )
         except sqlite3.IntegrityError:
             raise HTTPException(409, "An account with this email already exists. Try logging in.")
 
-        user = {"id": cur.lastrowid, "name": name, "email": email, "role": "user"}
+        user = {"id": cur.lastrowid, "name": name, "email": email, "role": body.role}
+        if body.role == "technician":
+            if worker:
+                conn.execute(
+                    "UPDATE workers SET name = ?, user_id = ? WHERE id = ?",
+                    (name, user["id"], worker["id"]),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO workers (name, category, user_id, email) VALUES (?, ?, ?, ?)",
+                    (name, category, user["id"], email),
+                )
         token = auth.create_session(conn, user["id"])
 
     return {"token": token, "user": user}
@@ -296,6 +334,10 @@ def submit_complaint(body: SubmitIn, user: dict = Depends(auth.require_user)):
 
     return {
         "complaint": dict(saved),
+        "id": complaint_id,
+        "category": category,
+        "confidence": confidence,
+        "department": department,
         "notification": {"title": title, "message": message},
         "similar": [{k: v for k, v in m.items() if k not in ("category", "department")} for m in matches],
         "possible_duplicate": possible_duplicate,
@@ -315,8 +357,8 @@ def my_complaints(user: dict = Depends(auth.require_user)):
 
 # ---------------- Admin routes ----------------
 
-@app.get("/api/admin/complaints")
-def admin_all_complaints(admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/complaints", dependencies=[Depends(auth.require_admin)])
+def admin_all_complaints():
     with db.connect() as conn:
         rows = conn.execute(
             """
@@ -332,11 +374,28 @@ def admin_all_complaints(admin: dict = Depends(auth.require_admin)):
     return {"complaints": [dict(r) for r in rows]}
 
 
-@app.post("/api/admin/complaints/{complaint_id}/status")
-def admin_update_status(
-    complaint_id: int, body: AdminStatusIn, admin: dict = Depends(auth.require_admin)
-):
+@app.post(
+    "/api/admin/complaints/{complaint_id}/status",
+    dependencies=[Depends(auth.require_admin)],
+)
+def admin_update_status(complaint_id: int, body: AdminStatusIn):
     """Only an admin can change a complaint's status."""
+    return _update_complaint_status(complaint_id, body)
+
+
+@app.post("/api/technician/complaints/{complaint_id}/status")
+def technician_update_status(
+    complaint_id: int,
+    body: AdminStatusIn,
+    user: dict = Depends(auth.require_technician),
+):
+    """A technician can update only complaints assigned to their worker profile."""
+    return _update_complaint_status(complaint_id, body, user)
+
+
+def _update_complaint_status(
+    complaint_id: int, body: AdminStatusIn, user: Optional[dict] = None
+):
     new_status = body.status.strip()
     if new_status not in COMPLAINT_STATUSES:
         raise HTTPException(422, f"Status must be one of: {', '.join(COMPLAINT_STATUSES)}")
@@ -347,6 +406,10 @@ def admin_update_status(
         ).fetchone()
         if not complaint:
             raise HTTPException(404, "Complaint not found.")
+        if user is not None:
+            worker_id = assign.worker_id_for_user(conn, user)
+            if worker_id is None or complaint["worker_id"] != worker_id:
+                raise HTTPException(403, "You can only update complaints assigned to you.")
 
         if new_status == "In Progress" and complaint["worker_id"] is None:
             w = assign.pick_worker(conn, complaint["category"])
@@ -368,9 +431,12 @@ def admin_update_status(
     return {"ok": True, "complaint_id": complaint_id, "status": new_status}
 
 
-@app.post("/api/admin/complaints/{complaint_id}/department")
+@app.post(
+    "/api/admin/complaints/{complaint_id}/department",
+    dependencies=[Depends(auth.require_admin)],
+)
 def admin_update_department(
-    complaint_id: int, body: AdminDepartmentIn, admin: dict = Depends(auth.require_admin)
+    complaint_id: int, body: AdminDepartmentIn
 ):
     department = body.department.strip()
     if department not in assign.DEPARTMENTS:
@@ -384,8 +450,8 @@ def admin_update_department(
     return {"ok": True, "complaint_id": complaint_id, "department": department}
 
 
-@app.get("/api/admin/users")
-def admin_all_users(admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/users", dependencies=[Depends(auth.require_admin)])
+def admin_all_users():
     with db.connect() as conn:
         rows = conn.execute(
             "SELECT id, name, email, role, created_at FROM users ORDER BY id DESC"
@@ -393,8 +459,8 @@ def admin_all_users(admin: dict = Depends(auth.require_admin)):
     return {"users": [dict(r) for r in rows]}
 
 
-@app.get("/api/admin/stats")
-def admin_dashboard_stats(admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/stats", dependencies=[Depends(auth.require_admin)])
+def admin_dashboard_stats():
     with db.connect() as conn:
         total_complaints = conn.execute("SELECT COUNT(*) FROM complaints").fetchone()[0]
         total_reports = conn.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
@@ -425,23 +491,23 @@ def admin_dashboard_stats(admin: dict = Depends(auth.require_admin)):
     }
 
 
-@app.get("/api/admin/categories")
-def admin_categories(admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/categories", dependencies=[Depends(auth.require_admin)])
+def admin_categories():
     """One summary card per category: workers, open work, pending queue."""
     with db.connect() as conn:
         cats = [assign.category_summary(conn, c) for c in assign.CATEGORIES]
     return {"categories": cats, "worker_capacity": assign.WORKER_CAPACITY}
 
 
-@app.get("/api/admin/workers")
-def admin_workers(admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/workers", dependencies=[Depends(auth.require_admin)])
+def admin_workers():
     """All technicians with their current load (for the technician list)."""
     with db.connect() as conn:
         return {"workers": assign.all_workers(conn)}
 
 
-@app.get("/api/admin/worker")
-def admin_worker(id: int, admin: dict = Depends(auth.require_admin)):
+@app.get("/api/admin/worker", dependencies=[Depends(auth.require_admin)])
+def admin_worker(id: int):
     """The separate dashboard of one technician."""
     with db.connect() as conn:
         data = assign.worker_detail(conn, id)
@@ -450,8 +516,24 @@ def admin_worker(id: int, admin: dict = Depends(auth.require_admin)):
     return data
 
 
-@app.get("/api/admin/category")
-def admin_category(name: str, admin: dict = Depends(auth.require_admin)):
+@app.get("/api/technician/worker")
+def technician_worker(user: dict = Depends(auth.require_technician)):
+    """Return the signed-in technician's own worker dashboard."""
+    with db.connect() as conn:
+        worker_id = assign.worker_id_for_user(conn, user)
+        if worker_id is None:
+            raise HTTPException(
+                404,
+                "Your technician account is not linked to a worker profile. Ask an administrator to link it.",
+            )
+        data = assign.worker_detail(conn, worker_id)
+    if not data:
+        raise HTTPException(404, "Technician profile not found.")
+    return data
+
+
+@app.get("/api/admin/category", dependencies=[Depends(auth.require_admin)])
+def admin_category(name: str):
     """The separate dashboard of one category: workers and their jobs, pending queue, all work."""
     if name not in assign.CATEGORIES:
         raise HTTPException(404, "Unknown category.")

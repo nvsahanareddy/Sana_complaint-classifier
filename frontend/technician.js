@@ -9,9 +9,14 @@ function renderTechnician(d) {
   $("techName").textContent = d.name;
   const info = $("techInfo");
   info.replaceChildren();
-  const a = document.createElement("a");
-  a.href = "category.html?cat=" + encodeURIComponent(d.category); a.textContent = d.category;
-  info.append("Category: ", a, "  ·  Department: " + d.department);
+  if (currentStaff.is_admin) {
+    const a = document.createElement("a");
+    a.href = "category.html?cat=" + encodeURIComponent(d.category);
+    a.textContent = d.category;
+    info.append("Category: ", a, "  ·  Department: " + d.department);
+  } else {
+    info.textContent = `Category: ${d.category}  ·  Department: ${d.department}`;
+  }
   $("sLoad").textContent = `${d.load} / ${d.capacity}`;
   $("sDone").textContent = d.done;
   $("sAvail").textContent = d.load >= d.capacity ? "Full" : "Available";
@@ -23,7 +28,10 @@ function renderTechnician(d) {
     addCell(row, "#" + c.id); addCell(row, `${c.user_name}\n${c.user_email}`); addCell(row, c.text); addCell(row, c.ward || "-");
     addStatusCell(row, c.status);
     row.appendChild(statusCell(c.status, COMPLAINT_STATUSES, async (status) => {
-      await api(`/api/admin/complaints/${c.id}/status`, { method: "POST", body: { status } });
+      const route = currentStaff.is_admin
+        ? `/api/admin/complaints/${c.id}/status`
+        : `/api/technician/complaints/${c.id}/status`;
+      await api(route, { method: "POST", body: { status } });
       setStatus(`Status updated for complaint #${c.id}.`);
       await load();
     }));
@@ -60,11 +68,18 @@ function renderTechnician(d) {
 async function load() {
   setStatus("Loading…");
   try {
-    const workerUrl = TECH_ID ? `/api/admin/worker?id=${encodeURIComponent(TECH_ID)}` : "/api/admin/worker";
-    const [d, cats] = await Promise.all([api(workerUrl), api("/api/admin/categories")]);
+    const isAdmin = currentStaff.is_admin;
+    const workerUrl = isAdmin
+      ? TECH_ID ? `/api/admin/worker?id=${encodeURIComponent(TECH_ID)}` : "/api/admin/worker"
+      : "/api/technician/worker";
+    const [d, cats] = await Promise.all([
+      api(workerUrl),
+      isAdmin ? api("/api/admin/categories") : Promise.resolve(null),
+    ]);
     TECH_ID = d.id;
     renderTechnician(d);
-    await renderCategoryNav("catNav", d.category, cats.categories);
+    $("catNav").hidden = !isAdmin;
+    if (isAdmin) await renderCategoryNav("catNav", d.category, cats.categories);
     setStatus("Updated successfully.");
   } catch (err) {
     setStatus(err.message, true);
@@ -75,8 +90,9 @@ $("refreshBtn").addEventListener("click", load);
 (async function start() {
   currentStaff = await checkStaff();
   if (currentStaff) {
+    $("adminDashboardLink").hidden = !currentStaff.is_admin;
     if (!TECH_ID && currentStaff.worker_id) {
-      TECH_ID = currentStaff.worker_id;
+      if (currentStaff.is_admin) TECH_ID = currentStaff.worker_id;
     }
     await load();
   }

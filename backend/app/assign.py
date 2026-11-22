@@ -26,11 +26,12 @@ DEPARTMENTS = set(CATEGORY_DEPARTMENT.values()) | {
 }
 
 # Sample workers: 4 per category (edit the names here before the first run, or in the workers table).
+MAX_WORKERS_PER_CATEGORY = 4
 WORKERS = {
     "Roads and Potholes": ["Ravi Kumar", "Suresh Gowda", "Manjunath Reddy", "Prakash Naik"],
     "Garbage and Sanitation": ["Lakshmi Devi", "Mohan Raj", "Savitha Rao", "Basavaraj Patil"],
     "Street Lights": ["Anil Shetty", "Vijay Kumar", "Harish Babu", "Nagaraj Hegde"],
-    "Water Supply": ["Ramesh Murthy", "Shankar Gowda", "Geetha Nair", "Dinesh Kamath"],
+    "Water Supply": ["Sugamya", "Shankar Gowda", "Geetha Nair", "Dinesh Kamath"],
     "Drainage and Sewage": ["Venkatesh Iyer", "Kiran Kumar", "Pradeep Joshi", "Mahesh Acharya"],
     "Noise and Pollution": ["Sunitha Rao", "Arun Prasad", "Deepa Shenoy", "Rajesh Bhat"],
     "Public Transport": ["Siddharth Menon", "Naveen Gowda", "Kavitha Reddy", "Girish Kulkarni"],
@@ -48,6 +49,19 @@ _R = ",".join("?" * len(REPORT_ACTIVE))
 
 def department_for(category):
     return CATEGORY_DEPARTMENT.get(category, "Municipal Office")
+
+
+def worker_id_for_user(conn, user):
+    row = conn.execute(
+        """
+        SELECT id FROM workers
+        WHERE user_id = ? OR email = ?
+        ORDER BY CASE WHEN user_id = ? THEN 0 ELSE 1 END
+        LIMIT 1
+        """,
+        (user["id"], user.get("email", ""), user["id"]),
+    ).fetchone()
+    return row["id"] if row else None
 
 
 def seed_workers(conn):
